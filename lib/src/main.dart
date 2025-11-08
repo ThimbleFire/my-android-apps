@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'notes_database.dart';
 
 void main() => runApp(ThimbleNotes());
 
@@ -19,22 +20,33 @@ class NoteHomePage extends StatefulWidget {
 
 class _NoteHomePageState extends State<NoteHomePage> {
   final TextEditingController _controller = TextEditingController();
-  final List<String> _notes = [];
+  List<Map<String, dynamic>> _notes = [];
 
-  void _addNote() {
+  @override
+  void initState() {
+    super.initState();
+    _loadNotes();
+  }
+
+  Future<void> _loadNotes() async {
+    final notes = await NotesDatabase.instance.getNotes();
+    setState(() {
+      _notes = notes;
+    });
+  }
+
+  Future<void> _addNote() async {
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
-      setState(() {
-        _notes.add(text);
-        _controller.clear();
-      });
+      await NotesDatabase.instance.addNote(text);
+      _controller.clear();
+      _loadNotes();
     }
   }
 
-  void _deleteNote(int index) {
-    setState(() {
-      _notes.removeAt(index);
-    });
+  Future<void> _deleteNote(int id) async {
+    await NotesDatabase.instance.deleteNote(id);
+    _loadNotes();
   }
 
   @override
@@ -46,14 +58,14 @@ class _NoteHomePageState extends State<NoteHomePage> {
     );
   }
 
-    AppBar buildAppBar() {
+  AppBar buildAppBar() {
     return AppBar(
-      title: Text('Simple Notes'),
+      title: Text('Thimble Notes'),
       backgroundColor: Colors.blueGrey,
     );
   }
-  
-    Widget buildBody() {
+
+  Widget buildBody() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -67,8 +79,8 @@ class _NoteHomePageState extends State<NoteHomePage> {
       ),
     );
   }
-  
-    Widget buildTextField() {
+
+  Widget buildTextField() {
     return TextField(
       controller: _controller,
       decoration: InputDecoration(
@@ -78,7 +90,7 @@ class _NoteHomePageState extends State<NoteHomePage> {
     );
   }
 
-    Widget buildSaveButton() {
+  Widget buildSaveButton() {
     return ElevatedButton(
       onPressed: _addNote,
       child: Text('Save Note'),
@@ -86,19 +98,22 @@ class _NoteHomePageState extends State<NoteHomePage> {
   }
 
   Widget buildNoteList() {
-  return Expanded(
-    child: ListView.builder(
-      itemCount: _notes.length,
-      itemBuilder: (context, index) => Card(
-        child: ListTile(
-          title: Text(_notes[index]),
-          trailing: IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: () => _deleteNote(index),
-          ),
-        ),
+    return Expanded(
+      child: ListView.builder(
+        itemCount: _notes.length,
+        itemBuilder: (context, index) {
+          final note = _notes[index];
+          return Card(
+            child: ListTile(
+              title: Text(note['content']),
+              trailing: IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: () => _deleteNote(note['id']),
+              ),
+            ),
+          );
+        },
       ),
-    ),
-  );
-}
+    );
+  }
 }
